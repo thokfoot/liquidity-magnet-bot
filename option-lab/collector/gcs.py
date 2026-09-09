@@ -41,8 +41,11 @@ def upload(path: Path, object_name: str, force: bool = False) -> bool:
         return False
     try:
         blob = bucket().blob(object_name)
-        if not force and blob.exists() and blob.size and blob.size == path.stat().st_size:
-            return True
+        if not force and blob.exists():
+            remote = blob.size or 0
+            local = path.stat().st_size
+            if remote >= local:
+                return True
         blob.upload_from_filename(str(path), timeout=120)
         log.info("GCS up %s (%d B)", object_name, path.stat().st_size)
         return True
