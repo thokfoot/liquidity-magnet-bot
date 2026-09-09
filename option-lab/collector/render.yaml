@@ -1,0 +1,37 @@
+# Render blueprint — free-tier option-data collector + paper-trader backend.
+# Deploy: Render Blueprint => point at this repo path (option-lab).
+# Keep-alive: cron-job.org hitting /healthz every 4 min during NSE trading hours
+# (09:05-15:40 IST) so the free instance never idles out mid-session.
+services:
+  - type: web
+    name: fno-option-collector
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: option-lab
+    buildCommand: pip install -r collector/requirements-collector.txt
+    startCommand: python -m collector.run_collector --auto
+    healthCheckPath: /healthz
+    envVars:
+      - key: FYERS_CLIENT_ID
+        sync: false
+      - key: FYERS_SECRET_KEY
+        sync: false
+      - key: FYERS_ACCESS_TOKEN
+        sync: false
+      - key: FYERS_REFRESH_TOKEN
+        sync: false
+      - key: FYERS_APP_TYPE
+        value: "100"
+      - key: COLLECTOR_DATA
+        value: /data/option-lab/data_live
+      - key: GCS_BUCKET
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        sync: false   # Render secret-file or path provided at deploy
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    disk:
+      name: collect-data
+      mountPath: /data
+      sizeGB: 2

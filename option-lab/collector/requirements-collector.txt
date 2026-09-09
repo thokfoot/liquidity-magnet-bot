@@ -1,0 +1,6 @@
+fyers-apiv3==3.1.7
+pandas>=2.2
+pyarrow>=16
+python-dotenv>=1.0
+requests>=2.31
+google-cloud-storage>=2.14

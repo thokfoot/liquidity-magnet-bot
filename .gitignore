@@ -1,0 +1,35 @@
+# ---- credentials / secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+*access_token*
+token_generated_at*
+*.secret
+*.json
+!render.yaml
+!package.json
+
+# ---- data lake (downloaded market data; backed up to GCS) ----
+market_data/
+option-lab/data/
+option-lab/data_live/
+*.parquet
+
+# ---- python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+
+# ---- test / build artifacts ----
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# ---- notebooks / scratch ----
+.ipynb_checkpoints/
