@@ -173,7 +173,7 @@ class Collector:
             if lst:
                 p = local(C.DATA_ROOT, day, "chain", index)
                 write_frame(p, sel_df(lst).drop(columns=["__k"], errors="ignore"),
-                            drop_key="__k")
+                            drop_key=["ts", "expiry", "strike"])
         self.chain_min = now.minute
         self.last_chain_ts = now
         return n
