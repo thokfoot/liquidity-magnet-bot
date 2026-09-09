@@ -44,7 +44,7 @@ DATA_ROOT = Path(get("COLLECTOR_DATA", str(OPTION_LAB / "data_live")))
 # ---- GCS (optional until bucket + service-account exist) ----
 GCS_BUCKET = get("GCS_BUCKET", "").strip()
 GOOGLE_APPLICATION_CREDENTIALS = get("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
-GCS_ENABLED = bool(GCS_BUCKET and GOOGLE_APPLICATION_CREDENTIALS)
+GCS_ENABLED = bool(GCS_BUCKET)
 
 # ---- Cadence / timing (IST) ----
 TIMEZONE = "Asia/Kolkata"
