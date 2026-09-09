@@ -23,10 +23,12 @@ while ($true) {
         Start-Sleep 15
         if ($p.HasExited -or $paper.HasExited) { break }
     }
+    $collExit = if ($p.HasExited) { "code=$($p.ExitCode)" } else { "killed-by-watchdog" }
+    $paperExit = if ($paper.HasExited) { "code=$($paper.ExitCode)" } else { "killed-by-watchdog" }
     if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
     if (-not $paper.HasExited) { Stop-Process -Id $paper.Id -Force }
     $dur = ((Get-Date) - $started).TotalSeconds
-    Add-Content $log "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') stopped dur=$([math]::Round($dur,1))s"
+    Add-Content $log "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') stopped dur=$([math]::Round($dur,1))s collector=$collExit paper=$paperExit"
     if ($dur -lt 60) { $fails++; } else { $fails = 0; }
     if ($fails -ge 5) {
         Add-Content $log "5 rapid failures - backing off 600s (token may be expired)"

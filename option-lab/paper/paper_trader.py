@@ -73,17 +73,10 @@ def load_chain(day: str) -> pd.DataFrame:
 
 
 def pick_expiry(chain: pd.DataFrame, spot: float) -> str:
-    if "expiry" not in chain:
+    if "expiry" not in chain or chain.empty:
         return ""
-    strikes = chain["strike"]
     codes = sorted(chain["expiry"].unique())
-    best, best_score = "", -1
-    for code in codes:
-        near = chain[chain["expiry"] == code].query("strike >= @spot - 50 and strike <= @spot + 50")
-        score = near["ce_ltp"].sum() + near["pe_ltp"].sum()
-        if score > best_score:
-            best, best_score = code, score
-    return best
+    return codes[0] if codes else ""
 
 
 def friction(entry_sum: float, exit_sum: float, lot: int) -> float:

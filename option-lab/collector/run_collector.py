@@ -360,7 +360,7 @@ def main() -> int:
                 try:
                     col.snapshot_chain(now)
                 except Exception as exc:  # noqa: BLE001
-                    log.warning("chain error: %s", exc)
+                    log.exception("chain error: %s", exc)
             if now.minute % 5 == 0 and now.minute != 0 and now.second < 2:
                 rows = col.flush_frames()
                 if rows:
