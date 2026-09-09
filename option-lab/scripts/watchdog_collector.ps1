@@ -12,13 +12,21 @@ $env:PYTHONUNBUFFERED = '1'
 $fails = 0
 while ($true) {
     $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-    Add-Content $log "$ts starting collector"
+    Add-Content $log "$ts starting collector + paper"
     $p = Start-Process python -ArgumentList '-u','-m','option-lab.collector.run_collector','--auto' -WorkingDirectory $wd -RedirectStandardOutput $out -RedirectStandardError $err -WindowStyle Hidden -PassThru
     Set-Content -Path $pidf -Value $p.Id
+    $paperOut = 'C:\Users\Mind\AppData\Local\Temp\opencode\paper.log'
+    $paperErr = 'C:\Users\Mind\AppData\Local\Temp\opencode\paper.err'
+    $paper = Start-Process python -ArgumentList '-u','C:\Dev\Dev\Trading\option-lab\paper\paper_trader.py','daemon' -WorkingDirectory $wd -RedirectStandardOutput $paperOut -RedirectStandardError $paperErr -WindowStyle Hidden -PassThru
     $started = Get-Date
-    $p.WaitForExit()
+    while ($true) {
+        Start-Sleep 15
+        if ($p.HasExited -or $paper.HasExited) { break }
+    }
+    if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+    if (-not $paper.HasExited) { Stop-Process -Id $paper.Id -Force }
     $dur = ((Get-Date) - $started).TotalSeconds
-    Add-Content $log "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') exited code=$($p.ExitCode) dur=$([math]::Round($dur,1))s"
+    Add-Content $log "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') stopped dur=$([math]::Round($dur,1))s"
     if ($dur -lt 60) { $fails++; } else { $fails = 0; }
     if ($fails -ge 5) {
         Add-Content $log "5 rapid failures - backing off 600s (token may be expired)"
