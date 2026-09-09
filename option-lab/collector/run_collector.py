@@ -39,6 +39,9 @@ log = logging.getLogger("collector")
 
 INDEX_NAME = {"NSE:NIFTY50-INDEX": "NIFTY", "NSE:NIFTYBANK-INDEX": "BANKNIFTY",
               "NSE:FINNIFTY-INDEX": "FINNIFTY", "NSE:MIDCPNIFTY-INDEX": "MIDCPNIFTY"}
+# option symbol prefix per index (spot symbols differ: NIFTYBANK-INDEX vs BANKNIFTY...)
+RAW_PREFIX = {"NIFTY": "NIFTY", "BANKNIFTY": "BANKNIFTY",
+              "FINNIFTY": "FINNIFTY", "MIDCPNIFTY": "MIDCPNIFTY"}
 
 
 def ist() -> dt.datetime:
@@ -121,10 +124,11 @@ class Collector:
         step = info["step"]
         last = self._last_spot(index)
         atm = int(round(last / step) * step) if last else 0
+        raw = RAW_PREFIX.get(index, index)
         syms = [C.INDICES[index]]
         for e in exps:
             code = e[1] if len(e) > 1 else e
-            base = f"NSE:{code}"
+            base = f"NSE:{raw}{code}"
             for k in range(-C.STREAM_HALF_WIDTH[index], C.STREAM_HALF_WIDTH[index] + 1):
                 st = atm + k * step
                 syms.append(f"{base}{st}CE")

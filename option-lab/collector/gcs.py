@@ -58,10 +58,11 @@ def sync_tree(root: Path) -> int:
     if not root.exists():
         return 0
     n = 0
+    prefix = (C.GCS_PREFIX + "/").lstrip("/")
     for p in sorted(root.rglob("*")):
         if not p.is_file():
             continue
-        obj = p.relative_to(root).as_posix()
+        obj = prefix + p.relative_to(root).as_posix()
         if upload(p, obj):
             n += 1
     return n

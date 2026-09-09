@@ -45,6 +45,8 @@ DATA_ROOT = Path(get("COLLECTOR_DATA", str(OPTION_LAB / "data_live")))
 GCS_BUCKET = get("GCS_BUCKET", "").strip()
 GOOGLE_APPLICATION_CREDENTIALS = get("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
 GCS_ENABLED = bool(GCS_BUCKET)
+# Blob prefix mirrors the repo layout used by the GCP VM (same bucket).
+GCS_PREFIX = get("GCS_PREFIX", "option-lab/data_live").strip()
 
 # ---- Cadence / timing (IST) ----
 TIMEZONE = "Asia/Kolkata"
