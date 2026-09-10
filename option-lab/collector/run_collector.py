@@ -171,6 +171,7 @@ class Collector:
                     continue
                 for r in chain_df_to_rows(now, index, od, epoch):
                     rows[index].append(r)
+                    self._push_chain_oi(index, epoch, now, r)
                     n += 1
         day = now.strftime("%Y-%m-%d")
         for index, lst in rows.items():
@@ -181,6 +182,21 @@ class Collector:
         self.chain_min = now.minute
         self.last_chain_ts = now
         return n
+
+    def _push_chain_oi(self, index: str, epoch: int, now: dt.datetime,
+                       r: dict) -> None:
+        """Feed chain ce_oi/pe_oi into the opts aggregator for this strike."""
+        code = month_code(epoch)
+        raw = RAW_PREFIX.get(index, index)
+        st = r.get("strike")
+        if not st:
+            return
+        for itype, oi, ltp in (("CE", r.get("ce_oi"), r.get("ce_ltp")),
+                               ("PE", r.get("pe_oi"), r.get("pe_ltp"))):
+            if oi is None or ltp is None:
+                continue
+            sym = f"NSE:{raw}{code}{st}{itype}"
+            self.agg.set_oi(sym, now, oi)
 
     # ---------------------------------------------------------------- flush
     def flush_frames(self) -> int:
@@ -229,17 +245,51 @@ def collection_symbols() -> list[str]:
     return syms
 
 
+def build_chain_oi_lookup(day_str: str) -> dict:
+    """{(minute, index, code, strike, itype): oi} from the day's chain parquets.
+
+    Used by EOD history backfill, which has no OI in its candles.
+    """
+    import pandas as pd
+
+    lookup: dict[tuple, float] = {}
+    root = C.DATA_ROOT / "chain"
+    if not root.exists():
+        return lookup
+    for pf in root.rglob(f"{day_str}.parquet"):
+        index = pf.parent.name
+        try:
+            ch = pd.read_parquet(pf)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("chain oi lookup read failed %s: %s", pf, exc)
+            continue
+        if ch.empty or "strike" not in ch.columns:
+            continue
+        ch_ts = pd.to_datetime(ch["ts"])
+        ch_ts = ch_ts.dt.tz_localize(None) if ch_ts.dt.tz is not None else ch_ts
+        ch["_min"] = ch_ts.dt.floor("min")
+        for itype, col in (("CE", "ce_oi"), ("PE", "pe_oi")):
+            sub = ch.dropna(subset=[col, "ce_ltp" if itype == "CE" else "pe_ltp"])
+            for _, row in sub.iterrows():
+                code = month_code(int(row["expiry"]))
+                key = (row["_min"], index, code, int(row["strike"]), itype)
+                lookup[key] = float(row[col])
+    return lookup
+
+
 def backfill_day(col: Collector, day_str: str) -> int:
     """EOD: replace snapshot-derived minute rows with true 1-min history bars."""
+    import pandas as pd
+
     from2 = f"{day_str} 09:15:00"
     to2 = f"{day_str} 15:35:00"
     upgraded = 0
+    oi_lookup = build_chain_oi_lookup(day_str)
     for sym in sorted(set(collection_symbols())):
         candles = col.api.history(sym, from2, to2, resolution=1)
         kind, index, tail = classify(sym)
         if not candles:
             continue
-        import pandas as pd
         df = pd.DataFrame(candles, columns=["epoch", "open", "high", "low",
                                             "close", "volume"])
         ts = pd.to_datetime(df["epoch"], unit="s") + pd.Timedelta(hours=5, minutes=30)
@@ -250,11 +300,14 @@ def backfill_day(col: Collector, day_str: str) -> int:
             cols = ["ts", "open", "high", "low", "close", "volume", "source"]
             p = local(C.DATA_ROOT, day_str, "spot", index)
         else:
-            df["oi"] = 0
+            # history candles carry no OI -> inject from the day's chain snapshots
+            code, strike, itype = tail.split("_") if tail.count("_") == 2 else (tail, "", "")
+            rows: list[float] = []
+            for t in df["ts"]:
+                rows.append(oi_lookup.get((t, index, code, int(strike or 0), itype), 0.0))
+            df["oi"] = rows
             df["n"] = 1
             cols = ["ts", "open", "high", "low", "close", "volume", "oi", "n"]
-            if tail:
-                cols = ["ts", "open", "high", "low", "close", "volume", "oi", "n"]
             p = local(C.DATA_ROOT, day_str, "opts", index, f"{tail}.parquet")
         write_frame(p, df[cols], drop_key="ts")
         upgraded += len(df)

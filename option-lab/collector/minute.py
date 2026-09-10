@@ -24,6 +24,14 @@ class SnapshotAggregator:
     def __init__(self):
         self._bars: dict[str, dict] = {}      # symbol -> {minute -> stats}
         self._last: dict[str, tuple] = {}      # symbol -> (ltp, oi, vol) carry-over
+        self._oi: dict[str, dict] = {}         # symbol -> {minute -> oi} (chain-sourced)
+
+    def set_oi(self, symbol: str, ts: dt.datetime, oi: float) -> None:
+        """Store chain OI for a symbol/minute without touching OHLC bars."""
+        if oi is None:
+            return
+        mk = minute_key(ts)
+        self._oi.setdefault(symbol, {})[mk] = float(oi)
 
     def push(self, symbol: str, ts: dt.datetime, ltp: float, oi: float, vol: float) -> None:
         mk = minute_key(ts)
@@ -55,10 +63,14 @@ class SnapshotAggregator:
         for symbol, bucket in list(self._bars.items()):
             done = {mk: stats for mk, stats in bucket.items() if mk < cut}
             for mk, s in done.items():
+                oi = s["oi"]
+                chain = self._oi.get(symbol, {}).get(mk)
+                if chain is not None:
+                    oi = chain
                 rows.append({
                     "symbol": symbol, "ts": mk,
                     "open": s["open"], "high": s["high"], "low": s["low"],
-                    "close": s["close"], "oi": s["oi"], "vol": s["vol"], "n": s["n"],
+                    "close": s["close"], "oi": oi, "vol": s["vol"], "n": s["n"],
                 })
                 del bucket[mk]
             if not bucket:

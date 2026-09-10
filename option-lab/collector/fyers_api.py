@@ -51,7 +51,7 @@ class FyersAPI:
                 out[item.get("n")] = {
                     "ltp": v.get("lp"),
                     "oi": v.get("oi"),
-                    "vol": v.get("v"),
+                    "vol": v.get("volume"),
                     "ts": v.get("ts"),
                     "lp_ts": v.get("lp_ts"),
                 }
