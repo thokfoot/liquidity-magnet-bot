@@ -156,6 +156,10 @@ def entry_snapshot(day: str) -> dict:
     cdf = chain[(chain["expiry"] == exp) & (chain["ts"] >= target)]
     if cdf.empty:
         return {}
+    if str(cdf["ts"].min()) > f"{day} 09:30:00":
+        print(f"[paper] chain data starts {cdf['ts'].min()}; entry window missed -> skip",
+              flush=True)
+        return {}
     ce_ltp = pe_ltp = 0.0
     for _, r in cdf.sort_values("ts").iterrows():
         if r["strike"] == ce:
